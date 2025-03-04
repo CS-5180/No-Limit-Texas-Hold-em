@@ -6,9 +6,5 @@ env = rlcard.make('no-limit-holdem', config={
     'allow_step_back': False  # Disables the step back feature
 })
 
-# Start a new game, which returns the initial game state and the ID of the current player.
-state, current_player = env.init_game()
-
-# (Optional) Display initial state
-print("Initial State:", state)
-print("Current Player ID:", current_player)
+state = env.reset()
+print("Initial state:", state)
