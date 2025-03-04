@@ -1,0 +1,63 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+*.dll
+*.dylib
+*.pyd
+
+# Virtual environment
+venv/
+env/
+*.egg-info/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# macOS system files
+.DS_Store
+
+# PyCharm project files
+.idea/
+*.iml
+
+# VSCode project files
+.vscode/
+*.code-workspace
+
+# Logs and debugging files
+logs/
+*.log
+*.out
+
+# Checkpoints & saved models
+models/
+*.pth
+*.h5
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# TensorBoard logs
+runs/
+tb_logs/
+
+# Cache and temp files
+.cache/
+*.tmp
+*.swp
+*.swo
+
+# Configurations & environment files
+config.json
+.env
+
+# Generated files
+*.npy
+*.npz
+
+# Python coverage reports
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+
