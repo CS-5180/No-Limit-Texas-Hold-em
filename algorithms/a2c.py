@@ -1,4 +1,4 @@
-from env.rlcard_setup import RLCardEnv
+from env_wrapper.rlcard_setup import RLCardEnv
 from logs.logger import Logger
 
 """
