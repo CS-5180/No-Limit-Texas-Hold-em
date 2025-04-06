@@ -37,36 +37,39 @@ def run_ablation_study(episodes=1000, save_dir='models'):
     agent_params = {
         'state_dim': state_dim,
         'action_dim': action_dim,
-        'hidden_dim': 128,
-        'lr': 3e-4,
+        'hidden_dim': 512,
+        'lr': 5e-4,
         'gamma': 0.99,
         'gae_lambda': 0.95,
         'clip_ratio': 0.2,
         'value_coef': 0.5,
-        'entropy_coef': 0.01,
+        'entropy_coef': 0.02,
         'max_grad_norm': 0.5,
-        'update_epochs': 4,
-        'minibatch_size': 64,
-        'device': 'cuda' if torch.cuda.is_available() else 'cpu'
+        'update_epochs': 8,
+        'minibatch_size': 256,
+        'device': 'cuda' if torch.cuda.is_available() else ('mps' if torch.backends.mps.is_available() else 'cpu')
     }
-    
+
     # Training parameters
     train_params = {
         'episodes': episodes,
         'max_steps': 200,
-        'update_frequency': 128,
-        'eval_frequency': 50,
-        'render_eval': False
+        'update_frequency': 256,
+        'eval_frequency': 500,
+        'render_eval': False,
+        'eval_episodes': 50
     }
     
     # Results storage
     results = {}
     trained_agents = {}
+
+    print(f"Running on device {agent_params['device']}")
     
     # Run experiments for each agent variant
     for agent_class in agent_classes:
         print(f"\nTraining {agent_class.__name__}")
-        
+
         # Initialize agent
         agent = agent_class(**agent_params)
         
@@ -80,7 +83,7 @@ def run_ablation_study(episodes=1000, save_dir='models'):
         # Save model
         os.makedirs(save_dir, exist_ok=True)
         agent.save_model(f"{save_dir}/{agent_class.__name__}.pt")
-    
+
     # Plot results
     plot_results(results)
     
