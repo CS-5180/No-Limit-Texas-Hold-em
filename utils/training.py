@@ -88,6 +88,8 @@ def train_agent(agent, env, episodes=1000, max_steps=200,
         initial_entropy = agent.entropy_coef
         min_entropy = 0.01
         decay_rate = 0.999999  # Very slow decay
+
+    milestone_episodes = [0, 1000, 5000, 10000, 15000, 20000]
     
     # Training loop
     for episode in tqdm(range(episodes), desc=f"Training {agent.__class__.__name__}"):
@@ -155,9 +157,11 @@ def train_agent(agent, env, episodes=1000, max_steps=200,
             print(f"Episode {episode}, Avg Reward: {np.mean(episode_rewards[-100:]):.2f}, "
                   f"Win Rate: {current_win_rate:.2f}, Eval Reward: {eval_reward:.2f}")
 
-            # Save regular checkpoint
-            checkpoint_path = f"{save_dir}/{agent.__class__.__name__}_episode_{episode}.pt"
-            agent.save_model(checkpoint_path)
+            # Save checkpoint only at milestone episodes
+            if episode in milestone_episodes:
+                checkpoint_path = f"{save_dir}/{agent.__class__.__name__}_episode_{episode}.pt"
+                agent.save_model(checkpoint_path)
+                print(f"Milestone checkpoint saved at episode {episode}")
 
             # Save best model based on evaluation reward
             if save_best and eval_reward > best_eval_reward:
@@ -173,19 +177,19 @@ def train_agent(agent, env, episodes=1000, max_steps=200,
                 agent.save_model(best_winrate_path)
                 print(f"New best model saved with win rate: {best_win_rate:.2f}")
 
-            # Save final model
-        final_path = f"{save_dir}/{agent.__class__.__name__}_final.pt"
-        agent.save_model(final_path)
+    # Save final model
+    final_path = f"{save_dir}/{agent.__class__.__name__}_final.pt"
+    agent.save_model(final_path)
 
-        # Gather metrics
-        metrics = {
-            'episode_rewards': episode_rewards,
-            'episode_lengths': episode_lengths,
-            'eval_rewards': eval_rewards,
-            'win_rate': wins / episodes,
-            'agent_type': agent.__class__.__name__,
-            'best_eval_reward': best_eval_reward,
-            'best_win_rate': best_win_rate
-        }
+    # Gather metrics
+    metrics = {
+        'episode_rewards': episode_rewards,
+        'episode_lengths': episode_lengths,
+        'eval_rewards': eval_rewards,
+        'win_rate': wins / episodes,
+        'agent_type': agent.__class__.__name__,
+        'best_eval_reward': best_eval_reward,
+        'best_win_rate': best_win_rate
+    }
 
-        return metrics
+    return metrics
