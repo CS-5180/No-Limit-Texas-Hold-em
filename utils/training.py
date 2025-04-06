@@ -7,7 +7,7 @@ from utils.evaluation import evaluate_agent
 
 def train_agent(agent, env, episodes=1000, max_steps=200, 
               update_frequency=128, eval_frequency=50, 
-              render_eval=False, seed=42):
+              render_eval=False, seed=42, eval_episodes=10):
     """
     Train an agent in the given environment
     
@@ -20,6 +20,7 @@ def train_agent(agent, env, episodes=1000, max_steps=200,
         eval_frequency: Frequency of evaluation
         render_eval: Whether to render during evaluation
         seed: Random seed
+        eval_episodes: determines how many episodes will be run when evaluating agent's performance
         
     Returns:
         Dict of metrics
@@ -79,7 +80,7 @@ def train_agent(agent, env, episodes=1000, max_steps=200,
         
         # Evaluate periodically
         if episode % eval_frequency == 0:
-            eval_reward = evaluate_agent(agent, env, episodes=10, render=render_eval)
+            eval_reward = evaluate_agent(agent, env, episodes=eval_episodes, render=render_eval)
             eval_rewards.append(eval_reward)
             
             # Print progress
