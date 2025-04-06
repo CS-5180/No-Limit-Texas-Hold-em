@@ -158,14 +158,17 @@ def main():
     
     if args.mode == 'ablation':
         # Run ablation study
+        print("Running ablation study")
         run_ablation_study(episodes=args.episodes, save_dir=args.save_dir)
     
     elif args.mode == 'train':
         # Train a single agent
+        print("Running training agent")
         train_single_agent(args)
     
     elif args.mode == 'eval':
         # Evaluate an agent
+        print("Running evaluation agent")
         if args.model_path is None:
             print("Error: --model-path is required for evaluation")
             return
@@ -173,6 +176,7 @@ def main():
         evaluate_agent_from_file(args)
     
     elif args.mode == 'plot':
+        print("Running plotting results")
         # Plot metrics from a previous run
         import numpy as np
         from experiments.visualization import plot_results
