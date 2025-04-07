@@ -13,7 +13,7 @@ ENV_CONFIG = {
 # Agent base configuration
 AGENT_CONFIG = {
     'hidden_dim': 512,
-    'lr': 5e-4,
+    'lr': 3e-4,
     'gamma': 0.99,
     'gae_lambda': 0.95,
     'value_coef': 0.5,

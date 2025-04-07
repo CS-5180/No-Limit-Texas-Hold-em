@@ -87,7 +87,7 @@ def train_agent(agent, env, episodes=1000, max_steps=200,
     if use_entropy_decay and hasattr(agent, 'entropy_coef'):
         initial_entropy = agent.entropy_coef
         min_entropy = 0.01
-        decay_rate = 0.999999  # Very slow decay
+        decay_rate = 0.999995  # Very slow decay
 
     milestone_episodes = [0, 1000, 5000, 10000, 15000, 20000]
     

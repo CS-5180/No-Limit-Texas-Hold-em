@@ -41,7 +41,7 @@ def run_ablation_study(episodes=1000, save_dir='models'):
         'state_dim': state_dim,
         'action_dim': action_dim,
         'hidden_dim': 512,
-        'lr': 1e-4,
+        'lr': 3e-4,
         'gamma': 0.99,
         'gae_lambda': 0.95,
 
@@ -64,8 +64,8 @@ def run_ablation_study(episodes=1000, save_dir='models'):
         'eval_frequency': 500,
         'render_eval': False,
         'eval_episodes': 50,
-        'use_shaped_rewards': True,
-        'use_entropy_decay': True
+        'use_shaped_rewards': False,
+        'use_entropy_decay': False
     }
     
     # Results storage
@@ -102,12 +102,18 @@ def run_ablation_study(episodes=1000, save_dir='models'):
 
     # Plot results
     plot_results(results)
-    
+
     # Print final metrics
     print("\n--- Final Results ---")
     for agent_name, metrics in results.items():
         print(f"{agent_name}:")
         print(f"  Average reward (last 100 episodes): {np.mean(metrics['episode_rewards'][-100:]):.4f}")
-        print(f"  Win rate: {metrics['win_rate']:.4f}")
+        print(f"  Final win rate: {metrics['win_rate']:.4f}")
+
+        # Add best metrics from checkpoints
+        if 'best_eval_reward' in metrics:
+            print(f"  Best evaluation reward: {metrics['best_eval_reward']:.4f}")
+        if 'best_win_rate' in metrics:
+            print(f"  Best win rate: {metrics['best_win_rate']:.4f}")
     
     return results, trained_agents
