@@ -3,6 +3,7 @@ from env_wrapper.rlcard_setup import RLCardPokerEnv
 from agents.ppo_clip import PPO_CLIP
 from agents.ppo_kl import PPO_KL
 from agents.random_agent import RandomAgent  # Import the random agent
+import os
 
 
 def play_poker_game(model_path, agent_type='ppo_clip', num_games=5):
@@ -38,7 +39,19 @@ def play_poker_game(model_path, agent_type='ppo_clip', num_games=5):
         device='cuda' if torch.cuda.is_available() else ('mps' if torch.backends.mps.is_available() else 'cpu')
     )
 
+    # Use best model by default
+    if model_path is None:
+        # Look for best win rate model
+        best_model_path = f"checkpoints/{agent_class.__name__}_best_winrate.pt"
+        if os.path.exists(best_model_path):
+            model_path = best_model_path
+            print(f"Using best win rate model: {model_path}")
+        else:
+            model_path = f"models/{agent_class.__name__}.pt"
+            print(f"Best model not found, using default path: {model_path}")
+
     # Load trained model
+    print(f"Loading model from: {model_path}")
     trained_agent.load_model(model_path)
 
     # Create opponent (random agent)
@@ -98,7 +111,7 @@ def play_poker_game(model_path, agent_type='ppo_clip', num_games=5):
 if __name__ == "__main__":
     # Example usage
     play_poker_game(
-        model_path="models/PPO_CLIP.pt",
+        model_path=None,
         agent_type="ppo_clip",
         num_games=3
     )
