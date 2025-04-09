@@ -21,7 +21,7 @@ def parse_args():
     
     # Mode arguments
     parser.add_argument('--mode', type=str, default='ablation', 
-                        choices=['ablation', 'train', 'eval', 'plot'],
+                        choices=['ablation', 'train', 'eval', 'plot', 'checkpoint-ablation'],
                         help='Operation mode')
     
     # Agent arguments
@@ -40,13 +40,16 @@ def parse_args():
     # Evaluation arguments
     parser.add_argument('--model-path', type=str, default=None,
                         help='Path to model for evaluation')
+    parser.add_argument('--compare-model-path', type=str, default=None,
+                    help='Path to second model for comparison in ablation study')
+    parser.add_argument('--eval-episodes', type=int, default=100,
+                    help='Number of episodes for evaluation')
     parser.add_argument('--render', action='store_true',
                         help='Render environment during evaluation')
     
     # Output arguments
     parser.add_argument('--save-dir', type=str, default='models',
                         help='Directory to save models')
-    
     return parser.parse_args()
 
 def train_single_agent(args):
@@ -152,6 +155,81 @@ def evaluate_agent_from_file(args):
     reward = evaluate_agent(agent, env, episodes=50, render=args.render)
     print(f"Average reward over 50 episodes: {reward:.4f}")
 
+def ablation_from_checkpoints(args):
+    """Perform ablation study using pre-trained checkpoints"""
+    if args.model_path is None or args.compare_model_path is None:
+        print("Error: Both --model-path and --compare-model-path are required")
+        return
+        
+    # Create environment
+    env = RLCardPokerEnv(**ENV_CONFIG)
+    
+    # Get state and action dimensions
+    observation = env.reset()
+    state_dim = len(observation['observation'])
+    action_dim = env.action_space['n']
+    
+    # Determine agent types from file paths
+    first_agent_type = 'ppo_clip' if 'clip' in args.model_path.lower() else 'ppo_kl'
+    second_agent_type = 'ppo_clip' if 'clip' in args.compare_model_path.lower() else 'ppo_kl'
+    
+    # Initialize agents
+    device = 'mps' if torch.mps.is_available() else 'cpu'
+    
+    # Initialize and load first agent
+    if first_agent_type == 'ppo_clip':
+        first_agent = PPO_CLIP(state_dim=state_dim, action_dim=action_dim, 
+                         **{**PPO_CLIP_CONFIG, 'device': device})
+    else:
+        first_agent = PPO_KL(state_dim=state_dim, action_dim=action_dim,
+                        **{**PPO_KL_CONFIG, 'device': device})
+    first_agent.load_model(args.model_path)
+    
+    # Initialize and load second agent
+    if second_agent_type == 'ppo_clip':
+        second_agent = PPO_CLIP(state_dim=state_dim, action_dim=action_dim,
+                          **{**PPO_CLIP_CONFIG, 'device': device})
+    else:
+        second_agent = PPO_KL(state_dim=state_dim, action_dim=action_dim,
+                        **{**PPO_KL_CONFIG, 'device': device})
+    second_agent.load_model(args.compare_model_path)
+    
+    # Evaluate agents
+    from utils.evaluation import evaluate_agent
+    
+    print(f"Evaluating {first_agent_type.upper()} from {args.model_path}...")
+    first_reward = evaluate_agent(first_agent, env, episodes=args.eval_episodes, 
+                                 render=args.render)
+    
+    print(f"Evaluating {second_agent_type.upper()} from {args.compare_model_path}...")
+    second_reward = evaluate_agent(second_agent, env, episodes=args.eval_episodes,
+                                  render=args.render)
+    
+    # Record metrics
+    results = {
+        first_agent_type.upper(): {'eval_reward': first_reward},
+        second_agent_type.upper(): {'eval_reward': second_reward}
+    }
+    
+    # Print comparison
+    print("\n=== Ablation Study Results ===")
+    print(f"{first_agent_type.upper()} avg reward: {first_reward:.2f}")
+    print(f"{second_agent_type.upper()} avg reward: {second_reward:.2f}")
+    print(f"Difference: {first_reward - second_reward:.2f}")
+    
+    # Create bar chart for visualization
+    import matplotlib.pyplot as plt
+    
+    plt.figure(figsize=(10, 6))
+    plt.bar([first_agent_type.upper(), second_agent_type.upper()], 
+            [first_reward, second_reward])
+    plt.title('PPO Variant Comparison')
+    plt.ylabel('Average Reward')
+    plt.savefig('ablation_results.png')
+    plt.show()
+    
+    return results
+
 def main():
     """Main function"""
     args = parse_args()
@@ -161,6 +239,11 @@ def main():
         print("Running ablation study")
         run_ablation_study(episodes=args.episodes, save_dir=args.save_dir)
     
+    elif args.mode == 'checkpoint-ablation':
+        # Run ablation study with pre-trained checkpoints
+        print("Running ablation study from checkpoints")
+        ablation_from_checkpoints(args)
+
     elif args.mode == 'train':
         # Train a single agent
         print("Running training agent")
