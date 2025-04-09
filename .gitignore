@@ -30,9 +30,12 @@ logs/
 *.out
 
 # Checkpoints & saved models
-models/
-*.pth
-*.h5
+models/*.pt
+models/*.pth
+models/*.h5
+
+# But keep track of source code
+!models/*.py
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
