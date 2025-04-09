@@ -6,7 +6,8 @@ import torch.nn.functional as F
 from torch.distributions import Categorical
 
 from agents.base_agent import BaseAgent
-from models.neural_net import PokerNetwork
+# from models.neural_net import PokerNetwork
+from models.enahnced_net import EnhancedPokerNetwork
 from utils.buffer import ReplayBuffer
 
 class PPO(BaseAgent):
@@ -67,7 +68,7 @@ class PPO(BaseAgent):
         self.kl_target = kl_target
         
         # Initialize policy network and optimizer
-        self.policy = PokerNetwork(state_dim, action_dim, hidden_dim).to(device)
+        self.policy = EnhancedPokerNetwork(state_dim, action_dim, hidden_dim).to(device)
         self.optimizer = optim.Adam(self.policy.parameters(), lr=lr)
         
         # Initialize buffer
