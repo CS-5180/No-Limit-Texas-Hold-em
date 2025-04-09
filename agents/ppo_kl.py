@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 import torch.nn.functional as F
 from torch.distributions import Categorical
 
@@ -75,9 +76,12 @@ class PPO_KL(PPO):
             self.losses['total_loss'].append(loss.item())
         
         # Adaptively adjust KL coefficient based on observed KL
-        if kl_div < self.kl_target / 1.5:
-            # KL too small, decrease penalty
-            self.kl_coef /= 2
-        elif kl_div > self.kl_target * 1.5:
-            # KL too large, increase penalty
-            self.kl_coef *= 2
+        # if kl_div < self.kl_target / 1.5:
+        #     # KL too small, decrease penalty
+        #     self.kl_coef /= 2
+        # elif kl_div > self.kl_target * 1.5:
+        #     # KL too large, increase penalty
+        #     self.kl_coef *= 2
+        kl_ratio = (kl_div / self.kl_target).cpu().item()
+        self.kl_coef *= np.exp(0.1 * (kl_ratio - 1))
+        self.kl_coef = np.clip(self.kl_coef, 1e-4, 100)
