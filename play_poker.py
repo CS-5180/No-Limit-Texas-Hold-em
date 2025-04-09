@@ -35,7 +35,7 @@ def play_poker_game(model_path, agent_type='ppo_clip', num_games=5):
     trained_agent = agent_class(
         state_dim=state_dim,
         action_dim=action_dim,
-        hidden_dim=512,
+        hidden_dim=256,
         device='cuda' if torch.cuda.is_available() else ('mps' if torch.backends.mps.is_available() else 'cpu')
     )
 
