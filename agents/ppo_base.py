@@ -196,7 +196,8 @@ class PPO(BaseAgent):
             return
         
         # Get all experiences
-        states, actions, rewards, next_states, dones, log_probs, values = zip(*self.buffer.buffer)
+        # states, actions, rewards, next_states, dones, log_probs, values = zip(*self.buffer.buffer)
+        (states, actions, rewards, next_states, dones, log_probs, values), indices, weights = self.buffer.sample(self.minibatch_size)
         
         # Convert to numpy arrays
         states = np.array(states)

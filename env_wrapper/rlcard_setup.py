@@ -86,7 +86,7 @@ class RLCardPokerEnv:
 
     def step(self, action: int) -> Tuple[Dict, float, bool, Dict]:
         """
-        Take a step in the environment.
+        Take a step in the environment with enhanced rewards.
 
         Args:
             action: Action ID (integer) to take
@@ -105,17 +105,61 @@ class RLCardPokerEnv:
         # Check if the hand is over
         done = self.env.is_over()
 
-        # Calculate rewards
+        # Calculate base rewards
         if done:
             # Get final payoffs at the end of the game
             payoffs = self.env.get_payoffs()
-            reward = payoffs[self.current_player]
+            base_reward = payoffs[self.current_player]
             # Store rewards for all players
             self.episode_rewards = payoffs
         else:
             # No intermediate rewards in poker
-            reward = 0
+            base_reward = 0
 
+        # Apply reward shaping
+        raw_obs = next_state['raw_obs']
+        shaped_reward = base_reward  # Start with the original reward
+        
+        # Enhance rewards based on game state and actions
+        if done and base_reward > 0:
+            # Bonus for winning hands
+            shaped_reward *= 1.2
+        
+        # Small reward for staying in the game (not folding)
+        if action != 0:  # 0 is fold
+            shaped_reward += 0.01
+        
+        # Encourage strategic betting based on pot size
+        if 'pot' in raw_obs and raw_obs['pot'] > 0:
+            pot_size = raw_obs['pot']
+            
+            # Reward for strategic raises
+            if action == 3:  # Raise Half Pot
+                shaped_reward += 0.005 * pot_size
+            elif action == 4:  # Raise Full Pot
+                shaped_reward += 0.01 * pot_size
+            elif action == 5:  # All In
+                # Only reward all-in with very strong hands
+                if self._estimate_hand_strength(raw_obs['hand'], raw_obs.get('public_cards', [])) > 0.8:
+                    shaped_reward += 0.02 * pot_size
+                else:
+                    # Penalize reckless all-ins
+                    shaped_reward -= 0.01 * pot_size
+        
+        # Reward for making good calls
+        if action == 2 and 'hand' in raw_obs:  # Action 2 is Call
+            hand_strength = self._estimate_hand_strength(raw_obs['hand'], raw_obs.get('public_cards', []))
+            if hand_strength > 0.6:  # Good hand
+                shaped_reward += 0.05
+            elif hand_strength < 0.3:  # Weak hand
+                shaped_reward -= 0.02  # Small penalty for calling with weak hands
+        
+        # Reward for checking with weak hands (pot control)
+        if action == 1 and 'hand' in raw_obs:  # Action 1 is Check
+            hand_strength = self._estimate_hand_strength(raw_obs['hand'], raw_obs.get('public_cards', []))
+            if hand_strength < 0.4:  # Weak hand
+                shaped_reward += 0.02  # Reward for pot control with weak hands
+        
         # Update current state and player
         self.current_state = next_state
         self.current_player = player_id
@@ -128,13 +172,67 @@ class RLCardPokerEnv:
             'player_id': player_id,
             'legal_actions': next_state['legal_actions'],
             'raw_legal_actions': next_state['raw_legal_actions'],
-            'step_count': self.step_count
+            'step_count': self.step_count,
+            'base_reward': base_reward,  # Store the original reward for analysis
+            'shaped_reward': shaped_reward  # Store the shaped reward for analysis
         }
 
         if done:
             info['episode_rewards'] = self.episode_rewards
 
-        return observation, reward, done, info
+        return observation, shaped_reward, done, info
+
+    def _estimate_hand_strength(self, hand, public_cards):
+        """
+        Simplified hand strength estimation function
+        
+        Args:
+            hand: Player's hole cards
+            public_cards: Community cards
+            
+        Returns:
+            Estimated hand strength (0-1)
+        """
+        # This is a very simplified estimation - in practice you'd use more sophisticated evaluation
+        
+        # Count high cards (10, J, Q, K, A)
+        high_cards = ['T', 'J', 'Q', 'K', 'A']
+        high_card_count = 0
+        
+        for card in hand:
+            if card[1] in high_cards:  # card[1] is the rank in RLCard format
+                high_card_count += 1
+        
+        # Check for pairs in hole cards
+        has_pair = hand[0][1] == hand[1][1]
+        
+        # Check for suited hole cards
+        suited = hand[0][0] == hand[1][0]
+        
+        # Basic strength calculation
+        strength = 0.3  # Base strength
+        
+        if high_card_count == 1:
+            strength += 0.1
+        elif high_card_count == 2:
+            strength += 0.2
+        
+        if has_pair:
+            strength += 0.3
+        
+        if suited:
+            strength += 0.1
+        
+        # Adjust based on community cards if we're past the pre-flop stage.
+        if len(public_cards) > 0:
+            # Can implement more complex hand evaluation
+            # For simplicity, we'll just add a small bonus for matching ranks
+            for hole_card in hand:
+                for community_card in public_cards:
+                    if hole_card[1] == community_card[1]:  # Matching rank
+                        strength += 0.05
+        
+        return min(strength, 1.0)  # Cap at 1.0
 
     def _encode_state(self, state: Dict) -> Dict:
         """
