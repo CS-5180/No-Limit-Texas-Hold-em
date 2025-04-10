@@ -10,6 +10,7 @@ from agents.ppo_clip import PPO_CLIP
 from agents.ppo_kl import PPO_KL
 from utils.training import train_agent
 from experiments.visualization import plot_results
+from agents.random_agent import RandomAgent
 
 def run_ablation_study(episodes=1000, save_dir='models'):
     """
@@ -35,6 +36,9 @@ def run_ablation_study(episodes=1000, save_dir='models'):
         PPO_CLIP,  # PPO with clipped objective
         PPO_KL     # PPO with KL constraint
     ]
+
+    # Initialize opponent pool with at least one RandomAgent
+    opponents = [RandomAgent()]
     
     # Common agent parameters
     common_params = {
@@ -65,7 +69,9 @@ def run_ablation_study(episodes=1000, save_dir='models'):
         'render_eval': False,
         'eval_episodes': 50,
         'use_shaped_rewards': False,
-        'use_entropy_decay': False
+        'use_entropy_decay': False,
+        'opponents': opponents,
+        'snapshot_interval': 500
     }
     
     # Results storage
