@@ -1,15 +1,17 @@
 import numpy as np
 import torch
 from tqdm import tqdm
+import copy
 
 from utils.evaluation import evaluate_agent
 from utils.poker_utils import shaped_reward
+from agents.random_agent import RandomAgent
 
 def train_agent(agent, env, episodes=1000, max_steps=200, 
               update_frequency=128, eval_frequency=50, 
               render_eval=False, seed=42, eval_episodes=10,
               use_shaped_rewards=True, use_entropy_decay=True,
-              save_dir='checkpoints', save_best=True):
+              save_dir='checkpoints', save_best=True, opponents=None, snapshot_interval=500):
     """
     Train an agent in the given environment
     
@@ -27,6 +29,8 @@ def train_agent(agent, env, episodes=1000, max_steps=200,
         use_entropy_decay: Whether to apply entropy decay during training
         save_dir: Directory to save checkpoints
         save_best: Whether to save the best model based on evaluation
+        opponents: List of opponent agents to sample from
+        snapshot_interval: Frequency (in episodes) to snapshot agent into opponent pool
         
     Returns:
         Dict of metrics
@@ -93,6 +97,17 @@ def train_agent(agent, env, episodes=1000, max_steps=200,
     
     # Training loop
     for episode in tqdm(range(episodes), desc=f"Training {agent.__class__.__name__}"):
+        # === Opponent Sampling ===
+        if opponents:
+            opponent = np.random.choice(opponents)
+            env.set_agents([agent, opponent])
+        else:
+            env.set_agents([agent, RandomAgent()])
+
+        # === Self-play Opponent Snapshotting ===
+        if opponents is not None and episode % snapshot_interval == 0 and episode != 0:
+            opponents.append(copy.deepcopy(agent))
+
         observation = env.reset()
         episode_reward = 0
         done = False
