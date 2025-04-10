@@ -411,3 +411,12 @@ class RLCardPokerEnv:
         """Clean up environment resources."""
         if hasattr(self.env, 'close'):
             self.env.close()
+
+    def set_agents(self, agents):
+        """
+            Assign agents to the underlying RLCard environment.
+
+            Args:
+                agents (list): List of agent objects to control the players.
+            """
+        self.env.set_agents(agents)
