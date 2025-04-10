@@ -2,19 +2,62 @@ import torch
 from env_wrapper.rlcard_setup import RLCardPokerEnv
 from agents.ppo_clip import PPO_CLIP
 from agents.ppo_kl import PPO_KL
-from agents.random_agent import RandomAgent  # Import the random agent
 import os
+
+
+class HumanAgent:
+    """
+    Human agent that takes actions based on user input.
+    """
+
+    def __init__(self):
+        self.name = "Human Player"
+
+    def act(self, observation):
+        """
+        Ask human player for an action.
+
+        Args:
+            observation: Current game state observation
+
+        Returns:
+            int: Action selected by human player
+        """
+        legal_actions = observation['legal_actions']
+
+        # Convert the OrderedDict keys to a list for easier selection
+        action_codes = list(legal_actions.keys())
+
+        # Display legal actions
+        print("\nYour available actions:")
+        for i, action_code in enumerate(action_codes):
+            action_str = env._action_to_string(action_code)
+            print(f"  {i}: {action_str} (action code: {action_code})")
+
+        # Get human input
+        while True:
+            try:
+                choice = int(input("\nEnter your choice (number): "))
+                if 0 <= choice < len(action_codes):
+                    # Return the action code, not the index
+                    return action_codes[choice]
+                else:
+                    print("Invalid choice. Please try again.")
+            except ValueError:
+                print("Please enter a valid number.")
 
 
 def play_poker_game(model_path, agent_type='ppo_clip', num_games=5):
     """
-    Load a trained agent and play poker games.
+    Load a trained agent and play poker games against a human.
 
     Args:
         model_path: Path to saved model
         agent_type: Type of agent ('ppo_clip' or 'ppo_kl')
         num_games: Number of games to play
     """
+    global env  # Make environment accessible to HumanAgent
+
     # Create environment
     env = RLCardPokerEnv(num_players=2, render_mode='human')
 
@@ -54,15 +97,20 @@ def play_poker_game(model_path, agent_type='ppo_clip', num_games=5):
     print(f"Loading model from: {model_path}")
     trained_agent.load_model(model_path)
 
-    # Create opponent (random agent)
-    opponent = RandomAgent()
+    # Create human player
+    human_player = HumanAgent()
+
+    print("\n=== Welcome to Poker vs AI ===")
+    print(f"You'll be playing against a trained {agent_name}")
+    print("The AI will be player 0, and you'll be player 1")
 
     # Play games
     for game in range(num_games):
         print(f"\n=== Starting Game {game + 1}/{num_games} ===")
         observation = env.reset()
         done = False
-        total_reward = 0
+        ai_reward = 0
+        human_reward = 0
 
         while not done:
             # Display current state
@@ -73,7 +121,7 @@ def play_poker_game(model_path, agent_type='ppo_clip', num_games=5):
             current_player = observation['player_id']
 
             # Determine whose turn it is
-            if current_player == 0:  # Trained agent's turn
+            if current_player == 0:  # AI agent's turn
                 # Get state and legal actions
                 state = observation['observation']
                 legal_actions = observation['legal_actions']
@@ -84,26 +132,45 @@ def play_poker_game(model_path, agent_type='ppo_clip', num_games=5):
                 # Print the action taken by the agent
                 action_str = env._action_to_string(action)
                 print(f"\n{agent_name} takes action: {action_str}")
-            else:  # Opponent's turn
-                # Get action from random opponent
-                action = opponent.act(observation)
 
-                # Print the action taken by the opponent
+                # Small pause to let user read AI's move
+                input("Press Enter to continue...")
+
+            else:  # Human player's turn
+                # Get action from human player
+                action = human_player.act(observation)
+
+                # Print the action taken by the human
                 action_str = env._action_to_string(action)
-                print(f"\nOpponent takes action: {action_str}")
+                print(f"\nYou chose: {action_str}")
 
             # Take action in environment
             next_observation, reward, done, info = env.step(action)
 
             # Update state and reward
             observation = next_observation
-            if current_player == 0:  # Only track rewards for trained agent
-                total_reward += reward
+            if current_player == 0:
+                ai_reward += reward
+            else:
+                human_reward += reward
 
-            # Prompt user to continue
-            input("\nPress Enter to continue to next action...")
+        # Show game results
+        print(f"\nGame {game + 1} finished!")
+        print(f"Your total reward: {human_reward}")
+        print(f"{agent_name} total reward: {ai_reward}")
 
-        print(f"Game {game + 1} finished. {agent_name} total reward: {total_reward}")
+        if human_reward > ai_reward:
+            print("You won this game!")
+        elif human_reward < ai_reward:
+            print("The AI won this game!")
+        else:
+            print("The game ended in a tie!")
+
+        if game < num_games - 1:
+            play_again = input("\nReady for the next game? (y/n): ")
+            if play_again.lower() != 'y':
+                print("Thanks for playing!")
+                break
 
     print("\nAll games completed!")
 
