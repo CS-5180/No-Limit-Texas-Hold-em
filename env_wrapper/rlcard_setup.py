@@ -234,34 +234,80 @@ class RLCardPokerEnv:
         
         return min(strength, 1.0)  # Cap at 1.0
 
+    # def _encode_state(self, state: Dict) -> Dict:
+    #     """
+    #     Convert RLCard state to a standardized observation format.
+    #
+    #     Args:
+    #         state: RLCard state dict
+    #
+    #     Returns:
+    #         Standardized observation dict
+    #     """
+    #     # Extract relevant information from state
+    #     obs = {
+    #         # Extract the raw observation vector used by RLCard
+    #         'observation': state['obs'],
+    #
+    #         # Additional useful information
+    #         'player_id': self.current_player,
+    #         'legal_actions': state['legal_actions'],
+    #         'raw_obs': {
+    #             'hand': state['raw_obs']['hand'],
+    #             'public_cards': state['raw_obs']['public_cards'],
+    #             'current_player': state['raw_obs']['current_player'],
+    #             'pot': state['raw_obs']['pot'],
+    #             'stakes': state['raw_obs']['stakes'],
+    #         }
+    #     }
+    #
+    #     return obs
+
     def _encode_state(self, state: Dict) -> Dict:
         """
-        Convert RLCard state to a standardized observation format.
-
-        Args:
-            state: RLCard state dict
-
-        Returns:
-            Standardized observation dict
+        Convert RLCard state to a standardized and enhanced observation format.
+        Supports arbitrary number of players.
         """
-        # Extract relevant information from state
-        obs = {
-            # Extract the raw observation vector used by RLCard
-            'observation': state['obs'],
+        raw_obs = state['raw_obs']
+        hand = raw_obs.get('hand', [])
+        public_cards = raw_obs.get('public_cards', [])
+        pot = raw_obs.get('pot', 0)
+        stakes = raw_obs.get('stakes', [0] * self.num_players)
 
-            # Additional useful information
-            'player_id': self.current_player,
+        # 1. Estimate hand strength
+        hand_strength = self._estimate_hand_strength(hand, public_cards)
+
+        # 2. Encode round stage
+        stage_map = {'preflop': 0, 'flop': 1, 'turn': 2, 'river': 3}
+        stage = stage_map.get(raw_obs.get('round_name', 'preflop'), 0)
+        round_one_hot = np.eye(4)[stage]
+
+        # 3. Encode player position (n-player one-hot)
+        player_id = self.current_player
+        position_one_hot = np.eye(self.num_players)[player_id]
+
+        # 4. Normalize pot and player stack
+        max_pot = 20000  # Adjust if you use higher chips
+        max_stack = 10000
+        stack = stakes[player_id] if player_id < len(stakes) else 0
+        pot_norm = pot / max_pot
+        stack_norm = stack / max_stack
+
+        # 5. Combine everything into a single enhanced state vector
+        enhanced_obs = np.concatenate([
+            np.array(state['obs'], dtype=np.float32),
+            np.array([hand_strength], dtype=np.float32),
+            round_one_hot.astype(np.float32),
+            position_one_hot.astype(np.float32),
+            np.array([pot_norm, stack_norm], dtype=np.float32)
+        ])
+
+        return {
+            'observation': enhanced_obs,
+            'player_id': player_id,
             'legal_actions': state['legal_actions'],
-            'raw_obs': {
-                'hand': state['raw_obs']['hand'],
-                'public_cards': state['raw_obs']['public_cards'],
-                'current_player': state['raw_obs']['current_player'],
-                'pot': state['raw_obs']['pot'],
-                'stakes': state['raw_obs']['stakes'],
-            }
+            'raw_obs': raw_obs
         }
-
-        return obs
 
     def _decode_action(self, action: int) -> int:
         """
